@@ -474,3 +474,13 @@ test("the settings row and the settings page compose one candidate list", async 
   assert.match(page, /imageGenerationPickerCandidates\(/);
   assert.match(page, /isImageGenerationPickerCandidate\(/);
 });
+
+test("auto-discovers image models from providers when candidate list is empty (#1511)", () => {
+  const gemini = provider("gemini-p", ["gemini-3.8-flash", "gemini-2.5-flash-image", "nano-banana-pro"]);
+  const candidates = imageGenerationPickerCandidates(undefined, null, [gemini]);
+  assert.equal(candidates.length, 2);
+  assert.deepEqual(candidates, [
+    binding("gemini-p", "gemini-2.5-flash-image"),
+    binding("gemini-p", "nano-banana-pro"),
+  ]);
+});

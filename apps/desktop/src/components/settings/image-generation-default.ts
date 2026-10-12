@@ -77,11 +77,31 @@ export function imageGenerationPickerCandidates(
   active: ImageGenerationBinding | null | undefined,
   providers: readonly ImageProviderFacts[],
 ): ImageGenerationBinding[] {
-  const configured = Array.isArray(stored)
+  const configured = Array.isArray(stored) && stored.length > 0
     ? imageGenerationBindings(stored, null)
     : imageGenerationBindings(undefined, active);
+  const autoDiscovered: ImageGenerationBinding[] = [];
+  if (configured.length === 0) {
+    for (const provider of providers) {
+      if (!provider.id || !provider.models) continue;
+      for (const model of provider.models) {
+        const idLower = model.id.toLowerCase();
+        if (
+          idLower.includes("image") ||
+          idLower.includes("dall-e") ||
+          idLower.includes("imagen") ||
+          idLower.includes("nano-banana") ||
+          idLower.includes("flux") ||
+          idLower.includes("stable-diffusion") ||
+          idLower.includes("sdxl")
+        ) {
+          autoDiscovered.push({ providerId: provider.id, modelId: model.id });
+        }
+      }
+    }
+  }
   return imageGenerationBindings(
-    [...configured, ...vendorAccountImageCandidates(providers)],
+    [...configured, ...vendorAccountImageCandidates(providers), ...autoDiscovered],
     null,
   );
 }

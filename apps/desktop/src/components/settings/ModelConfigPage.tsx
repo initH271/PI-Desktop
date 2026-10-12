@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  imageModelOfferedByProvider,
+  modelWireIdsEqual as sameComposerModelId,
   vendorAccountImageCandidates,
   type ImageGenerationBinding,
   type ModelBinding,
@@ -266,17 +268,36 @@ export function ModelConfigPage() {
         current.imageGeneration,
         providers,
       );
-      if (!isImageGenerationPickerCandidate(candidates, binding.providerId, binding.modelId)) {
-        // The row offered this binding when it rendered, but the settings read
-        // above no longer lists it: another window, another agent or a
-        // concurrent provider edit changed the candidates in between. Report
-        // the refusal instead of returning silently — a pick that keeps the
-        // previous default with no message reads as a broken menu, and the
-        // runtime would reject the binding on the next request anyway.
+      const isKnownCandidate = isImageGenerationPickerCandidate(
+        candidates,
+        binding.providerId,
+        binding.modelId,
+      );
+      const provider = providers.find((p) => p.id === binding.providerId);
+      const isOfferedByProvider =
+        provider && imageModelOfferedByProvider(provider, binding.modelId);
+
+      if (!isKnownCandidate && !isOfferedByProvider) {
         showToast(t("settings.imageModelSaveFailed"), { variant: "error" });
         return;
       }
-      const nextSettings = { ...current, imageGeneration: binding };
+      const existingCandidates = current.imageGenerationModels
+        ? [...current.imageGenerationModels]
+        : [];
+      if (
+        !existingCandidates.some(
+          (m) =>
+            m.providerId === binding.providerId &&
+            sameComposerModelId(m.modelId, binding.modelId),
+        )
+      ) {
+        existingCandidates.push(binding);
+      }
+      const nextSettings = {
+        ...current,
+        imageGeneration: binding,
+        imageGenerationModels: existingCandidates,
+      };
       await api.setSettings(nextSettings);
       useAppStore.setState({ settings: nextSettings });
       showToast(t("settings.imageModelSelected"), { variant: "success" });
